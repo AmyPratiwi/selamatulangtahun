@@ -111,7 +111,7 @@
     <div id="game-container" class="text-center">
         <div class="mb-4">
             <h1 class="text-4xl font-extrabold text-pink-600 drop-shadow-sm italic">HBD Puzzle! 🎂</h1>
-            <p class="text-gray-700 font-medium mt-2">Selesaikan puzzle</p>
+            <p class="text-gray-700 font-medium mt-2">Selesaikan puzzle!</p>
         </div>
         
         <div class="flex flex-col items-center bg-white p-6 rounded-3xl shadow-xl">
@@ -136,12 +136,12 @@
         <h2 class="text-5xl font-black text-yellow-400 mb-2 italic tracking-tighter">HAPPY BIRTHDAY!</h2>
         <div class="max-w-md bg-white text-gray-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-pink-500 to-yellow-500"></div>
-            <h3 class="text-2xl font-bold mb-4 text-pink-600">HAPPY BIRTHDAY! <span class="heart inline-block">💖</span></h3>
+            <h3 class="text-2xl font-bold mb-4 text-pink-600">Selamat Ulang Tahun! <span class="heart inline-block">💖</span></h3>
             <p class="text-lg leading-relaxed mb-6 text-gray-600">
-                "Selamat ulang tahun bli mang. Semoga sukses dalam karier, panjang umur, sehat selalu!"
+                "Semoga panjang umur, sehat selalu, dimudahkan dalam segala hal. dari komang amy jegeg :)"
             </p>
             <div class="space-y-2 border-t pt-4">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest italic">sekian</p>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest italic">Hore! Kamu Berhasil Menyelesaikan Puzzle!</p>
             </div>
             
             <button onclick="location.reload()" class="mt-8 w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-2xl font-bold hover:opacity-90 transition shadow-md">
@@ -154,13 +154,29 @@
         const size = 3;
         let tiles = [];
         let moves = 0;
-        let randomImage = '';
+        let currentImage = 'fotobm.jpeg'; // Gambar utama yang diinginkan
         const boardElement = document.getElementById('board');
         const moveDisplay = document.getElementById('move-count');
         const winOverlay = document.getElementById('win-overlay');
 
+        // Fungsi untuk mengecek apakah gambar bisa dimuat, jika tidak ganti ke placeholder
+        function validateAndSetImage(url) {
+            const img = new Image();
+            img.onload = () => {
+                currentImage = url;
+                renderBoard();
+            };
+            img.onerror = () => {
+                console.warn(`Gagal memuat ${url}, beralih ke gambar acak.`);
+                currentImage = `https://picsum.photos/450/450?random=${Math.floor(Math.random() * 1000)}`;
+                renderBoard();
+            };
+            img.src = url;
+        }
+
         function updateRandomImage() {
-            randomImage = `fotobm.jpeg=${Math.floor(Math.random() * 1000)}`;
+            // Kita coba gunakan fotobm.jpeg dulu
+            validateAndSetImage('fotobm.jpeg');
         }
 
         function createTiles() {
@@ -186,7 +202,7 @@
                 if (tile.isEmpty) {
                     div.classList.add('empty');
                 } else {
-                    div.style.backgroundImage = `url('${randomImage}')`;
+                    div.style.backgroundImage = `url('${currentImage}')`;
                     const cellSize = window.innerWidth < 640 ? 100 : 120;
                     div.style.backgroundPosition = `-${tile.origC * cellSize}px -${tile.origR * cellSize}px`;
                     div.setAttribute('data-id', tile.id);
@@ -270,9 +286,10 @@
             }
         }
 
-        updateRandomImage();
+        // Inisialisasi awal
         createTiles();
-        renderBoard();
+        updateRandomImage(); 
+        
         setTimeout(shuffleGame, 800);
 
         window.addEventListener('resize', renderBoard);
