@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle Happy Birthday 3x3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --grid-size: 3;
+            --cell-size: 100px;
+        }
+
+        @media (min-width: 640px) {
+            :root { --cell-size: 120px; }
+        }
+
+        .puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+            grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+            gap: 2px;
+            background-color: #333;
+            border: 4px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .tile {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-size: calc(var(--cell-size) * var(--grid-size)) calc(var(--cell-size) * var(--grid-size));
+            cursor: pointer;
+            transition: all 0.2s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            position: relative;
+        }
+
+        .tile::after {
+            content: attr(data-id);
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            font-weight: bold;
+        }
+
+        .tile:hover {
+            filter: brightness(1.2);
+            transform: scale(0.98);
+        }
+
+        .tile.empty {
+            background: #f3f4f6 !important;
+            cursor: default;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tile.empty::after {
+            content: "";
+        }
+
+        .win-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            z-index: 101;
+            animation: fall 3s linear forwards;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(360deg); }
+        }
+
+        .heart {
+            color: #ec4899;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-pink-200 min-h-screen flex flex-col items-center justify-center font-sans p-4">
+
+    <div id="game-container" class="text-center">
+        <div class="mb-4">
+            <h1 class="text-4xl font-extrabold text-pink-600 drop-shadow-sm italic">HBD Puzzle! 🎂</h1>
+            <p class="text-gray-700 font-medium mt-2">Selesaikan puzzle</p>
+        </div>
+        
+        <div class="flex flex-col items-center bg-white p-6 rounded-3xl shadow-xl">
+            <div id="board" class="puzzle-board mb-6"></div>
+            
+            <div class="w-full flex justify-between items-center">
+                <div class="text-left">
+                    <p class="text-xs uppercase tracking-widest text-gray-400 font-bold">Langkah</p>
+                    <p id="move-count" class="text-2xl font-black text-gray-800">0</p>
+                </div>
+                <button onclick="shuffleGame()" class="bg-gradient-to-r from-pink-500 to-orange-400 hover:from-pink-600 hover:to-orange-500 text-white px-8 py-3 rounded-2xl font-bold transition-all transform hover:-translate-y-1 shadow-lg active:scale-95">
+                    Ganti Gambar
+                </button>
+            </div>
+        </div>
+        <p class="mt-6 text-sm text-pink-500 font-semibold italic">Tingkat kesulitan: 3x3 (Mudah)</p>
+    </div>
+
+    <!-- Overlay Kemenangan -->
+    <div id="win-overlay" class="win-overlay">
+        <div class="animate-bounce mb-4 text-6xl">🎈</div>
+        <h2 class="text-5xl font-black text-yellow-400 mb-2 italic tracking-tighter">HAPPY BIRTHDAY!</h2>
+        <div class="max-w-md bg-white text-gray-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-pink-500 to-yellow-500"></div>
+            <h3 class="text-2xl font-bold mb-4 text-pink-600">HAPPY BIRTHDAY! <span class="heart inline-block">💖</span></h3>
+            <p class="text-lg leading-relaxed mb-6 text-gray-600">
+                "Selamat ulang tahun bli mang. Semoga sukses dalam karier, panjang umur, sehat selalu!"
+            </p>
+            <div class="space-y-2 border-t pt-4">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest italic">sekian</p>
+            </div>
+            
+            <button onclick="location.reload()" class="mt-8 w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-2xl font-bold hover:opacity-90 transition shadow-md">
+                Main Lagi
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const size = 3;
+        let tiles = [];
+        let moves = 0;
+        let randomImage = '';
+        const boardElement = document.getElementById('board');
+        const moveDisplay = document.getElementById('move-count');
+        const winOverlay = document.getElementById('win-overlay');
+
+        function updateRandomImage() {
+            randomImage = `fotobm.jpeg=${Math.floor(Math.random() * 1000)}`;
+        }
+
+        function createTiles() {
+            tiles = [];
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const isLast = (r === size - 1 && c === size - 1);
+                    tiles.push({
+                        origR: r,
+                        origC: c,
+                        isEmpty: isLast,
+                        id: r * size + c + 1
+                    });
+                }
+            }
+        }
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            tiles.forEach((tile, index) => {
+                const div = document.createElement('div');
+                div.classList.add('tile');
+                if (tile.isEmpty) {
+                    div.classList.add('empty');
+                } else {
+                    div.style.backgroundImage = `url('${randomImage}')`;
+                    const cellSize = window.innerWidth < 640 ? 100 : 120;
+                    div.style.backgroundPosition = `-${tile.origC * cellSize}px -${tile.origR * cellSize}px`;
+                    div.setAttribute('data-id', tile.id);
+                }
+                
+                div.onclick = () => moveTile(index);
+                boardElement.appendChild(div);
+            });
+        }
+
+        function moveTile(index) {
+            const emptyIndex = tiles.findIndex(t => t.isEmpty);
+            const r = Math.floor(index / size);
+            const c = index % size;
+            const er = Math.floor(emptyIndex / size);
+            const ec = emptyIndex % size;
+
+            const isAdjacent = (Math.abs(r - er) + Math.abs(c - ec)) === 1;
+
+            if (isAdjacent) {
+                [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+                moves++;
+                moveDisplay.innerText = moves;
+                renderBoard();
+                checkWin();
+            }
+        }
+
+        function shuffleGame() {
+            moves = 0;
+            moveDisplay.innerText = moves;
+            updateRandomImage();
+            
+            for (let i = 0; i < 150; i++) {
+                const emptyIndex = tiles.findIndex(t => t.isEmpty);
+                const r = Math.floor(emptyIndex / size);
+                const c = emptyIndex % size;
+                
+                const neighbors = [];
+                if (r > 0) neighbors.push(emptyIndex - size);
+                if (r < size - 1) neighbors.push(emptyIndex + size);
+                if (c > 0) neighbors.push(emptyIndex - 1);
+                if (c < size - 1) neighbors.push(emptyIndex + 1);
+
+                const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                [tiles[emptyIndex], tiles[randomNeighbor]] = [tiles[randomNeighbor], tiles[emptyIndex]];
+            }
+            renderBoard();
+        }
+
+        function checkWin() {
+            const isWin = tiles.every((tile, index) => {
+                const r = Math.floor(index / size);
+                const c = index % size;
+                return tile.origR === r && tile.origC === c;
+            });
+
+            if (isWin && moves > 0) {
+                setTimeout(showWin, 500);
+            }
+        }
+
+        function showWin() {
+            winOverlay.style.display = 'flex';
+            createConfetti();
+        }
+
+        function createConfetti() {
+            const colors = ['#f472b6', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'];
+            for (let i = 0; i < 150; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = '-10px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = Math.random() * 10 + 5 + 'px';
+                confetti.style.height = confetti.style.width;
+                confetti.style.animationDuration = Math.random() * 2 + 2 + 's';
+                confetti.style.opacity = Math.random();
+                document.body.appendChild(confetti);
+            }
+        }
+
+        updateRandomImage();
+        createTiles();
+        renderBoard();
+        setTimeout(shuffleGame, 800);
+
+        window.addEventListener('resize', renderBoard);
+    </script>
+</body>
+</html>
